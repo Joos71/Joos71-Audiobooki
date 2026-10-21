@@ -1,0 +1,10 @@
+# Lokalny dziennik, stan synchronizacji, Python cache — nigdy nie publikuj.
+synchronizacja.log
+.stan-synchronizacji.json
+__pycache__/
+*.pyc
+*.pyo
+*.tmp
+# Kopie i oryginalne pliki JSON nie powinny trafić przypadkowo do repo.
+przesłuchane*.json
+# Nie dodawaj folderu Pobrane do repozytorium.

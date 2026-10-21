@@ -1,0 +1,99 @@
+JOOS71 — PRZESŁUCHANE KSIĄŻKI
+Wersja 1.0 — strona GitHub Pages + JEDNORAZOWA aktualizacja przy zalogowaniu.
+
+CO DOSTAJESZ
+- Gotową stronę: docs/index.html, docs/data.js, docs/main.js, docs/style.css
+- 336 książek z przesłanego pliku przesłuchane.json.
+- Wyszukiwanie, filtr lat, statusów, sortowanie, okładki i Twoje oceny.
+- buduj_katalog.py — generator całej strony bez zewnętrznych bibliotek.
+- synchronizuj.py — program jednorazowy. URUCHAMIA SIĘ RAZ I KOŃCZY.
+- ustawienia.json — E:\Pobrane i repozytorium GitHub.
+- synchronizacja.log — powstanie lokalnie po pierwszym uruchomieniu.
+
+KATALOG ROBOCZY (proponowana lokalizacja):
+E:\Joos71_Ksiazki
+
+A. PRZYGOTOWANIE
+1. Rozpakuj ZIP tak, aby plik E:\Joos71_Ksiazki\docs\index.html istniał.
+2. Możesz otworzyć docs\index.html w Chrome i obejrzeć katalog.
+3. Weryfikacja folderu: Test-Path "E:\Joos71_Ksiazki\docs\index.html" -> True.
+4. Źródłem kolejnych aktualizacji będzie folder E:\Pobrane.
+   Dopasowanie nazw: przesłuchane.json, przesłuchane (1).json, przesłuchane (2).json itd.
+   Wybierana jest najnowsza (wg modyfikacji) POPRAWNA zawartość pliku.
+
+B. PIERWSZA PUBLIKACJA — osobne repozytorium
+1. Na GitHub utwórz PUBLICZNE, PUSTE repozytorium Joos71-Audiobooki
+   (bez README, .gitignore i LICENSE tworzonych na GitHub podczas zakładania).
+2. W PowerShell:
+   cd "E:\Joos71_Ksiazki"
+   git init -b main
+   git remote add origin https://github.com/Joos71/Joos71-Audiobooki.git
+3. Ustaw autora dla tego repozytorium:
+   git config user.name "Joos71"
+   git config user.email "TWOJ_ADRES_NOREPLY_Z_GITHUB"
+   Adres możesz odczytać w https://github.com/settings/emails.
+4. Skonfiguruj magazyn poświadczeń DPAPI:
+   git config credential.credentialStore dpapi
+5. Do publicznego repozytorium dodaj TYLKO pliki strony i .gitignore:
+   git add -- docs .gitignore
+   git commit -m "Pierwsza publikacja katalogu audiobooków Joos71"
+   git push -u origin main
+   Przy pierwszym push GitHub może poprosić o autoryzację przez przeglądarkę.
+6. W GitHub: Settings -> Pages -> Deploy from a branch -> main -> /docs -> Save.
+   Docelowy adres: https://joos71.github.io/Joos71-Audiobooki/
+
+C. JEDNORAZOWY MONITOR PO ZALOGOWANIU — BEZ OKNA
+1. Najpierw uruchom synchronizację testowo w PowerShell (po pierwszej publikacji):
+   cd "E:\Joos71_Ksiazki"
+   py -3 synchronizuj.py
+   Program sprawdzi raz, w razie potrzeby wyśle zmiany i ZAKOŃCZY SIĘ.
+2. Otwórz Harmonogram zadań Windows -> Utwórz zadanie...
+3. Ogólne:
+   Nazwa: Joos71 - Ksiazki - Jednorazowa synchronizacja
+   Uruchom tylko wtedy, gdy użytkownik jest zalogowany
+   Nie zaznaczaj "Uruchom z najwyższymi uprawnieniami".
+4. Wyzwalacze -> Nowy -> Przy logowaniu -> Określony użytkownik (Twoje konto).
+   Opcjonalnie opóźnij o 30 sekund, aby dysk i sieć zdążyły się uruchomić.
+   NIE zaznaczaj powtarzania zadania.
+5. Akcje -> Nowa -> Uruchom program
+   Program/skrypt:
+       C:\Users\joos9\AppData\Local\Programs\Python\Launcher\pyw.exe
+   Dodaj argumenty:
+       -3 "E:\Joos71_Ksiazki\synchronizuj.py"
+   Rozpocznij w (BEZ cudzysłowów):
+       E:\Joos71_Ksiazki
+6. Warunki: nie wymagaj bezczynności ani zasilania sieciowego.
+7. Ustawienia:
+   Pozostaw "Zezwalaj na uruchamianie zadania na żądanie".
+   Nie zaznaczaj "Po błędzie uruchom ponownie" (jedno sprawdzenie na logowanie).
+   Nie zaznaczaj "Powtarzaj zadanie".
+   "Jeśli zadanie jest już uruchomione": Nie uruchamiaj nowego wystąpienia.
+8. Zapisz zadanie. Przetestuj: prawy klik zadania -> Uruchom.
+   Zadanie ma po chwili wrócić do stanu "Gotowy". To PRAWIDŁOWE,
+   ponieważ program nie działa stale w tle.
+9. Otwórz E:\Joos71_Ksiazki\synchronizacja.log i zobacz najnowsze wpisy.
+
+D. NA CO DZIEŃ
+- Edytujesz dotychczasową stronę Google Sites tak samo jak dotychczas.
+- Klikasz "Zapisz i pobieraj plik"; JSON trafia do E:\Pobrane.
+- Nie musisz pilnować zapisu ani uruchamiać programu ręcznie.
+- Po następnym zalogowaniu do Windows zadanie JEDEN RAZ sprawdzi najnowszy JSON.
+- Jeżeli plik i oceny się zmieniły, strona jest generowana w całości od nowa.
+- Jeżeli nic się nie zmieniło, program zapisze informację w logu i zakończy się.
+- Git wysyła tylko faktycznie zmienione pliki.
+- GitHub Pages publikuje zmiany z niewielkim opóźnieniem.
+
+WAŻNE
+- To NIE JEST bieżące kopiowanie zmian z Google Sites. Źródłem jest pobrany JSON.
+- Każde dodatkowe pobranie w ciągu dnia zostanie uwzględnione przy następnym logowaniu,
+  a nie od razu. Jeśli chcesz, możesz ręcznie uruchomić zadanie w Harmonogramie.
+- Po restarcie PC, na którym działa szybkie uruchamianie Windows, samo logowanie
+  powinno uruchomić zadanie zgodnie z wyzwalaczem.
+- Program nie usuwa, nie zmienia i nie przenosi żadnego JSON-u z E:\Pobrane.
+- Jeśli GitHub wymaga ponownego logowania, ukryty monitor NIE otwiera okna.
+  Zapisuje błąd do synchronizacja.log; musisz wtedy zalogować się przez
+  zwykły interaktywny Git push z PowerShell, jak przy pierwszym uruchomieniu.
+- Okładki pochodzą z adresów internetowych zapisanych w źródłowym JSON.
+  Gdy zewnętrzny serwer nie udostępni obrazu, strona wyświetli tytuł zastępczy.
+- Publikowane są jedynie metadane widoczne w katalogu, a nie żadne audiobooki.
+- Nie dodawaj całego E:\Pobrane do publicznego GitHub.
