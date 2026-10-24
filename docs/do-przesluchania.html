@@ -1,0 +1,46 @@
+<!doctype html>
+<html lang="pl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="light">
+<meta name="theme-color" content="#e5d3aa">
+<meta name="description" content="Joos71 — kronika audiobooków oczekujących na przesłuchanie.">
+<title>Joos71 — Księgi oczekujące | Pergamin Kronika</title>
+<link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="style.css">
+<link rel="stylesheet" href="oczekujace.css">
+<script defer src="oczekujace-data.js"></script>
+<script defer src="oczekujace.js"></script>
+</head>
+<body class="waiting-page">
+<a href="#waiting-books" class="skip">Przejdź do oczekujących książek</a>
+<header class="topbar"><div class="container topbar-inner">
+<a href="index.html" class="brand" aria-label="Joos71 — kronika książek"><span class="brand-mark">J</span><span>JOOS71<small>KRONIKA / KSIĘGI OCZEKUJĄCE</small></span></a>
+<nav class="catalog-tabs" aria-label="Wybierz katalog">
+<a href="index.html">Przesłuchane</a><a class="active" aria-current="page" href="do-przesluchania.html">Do przesłuchania</a>
+</nav>
+<div class="top-status"><span class="last-status" id="waiting-updated">Zapis: —</span></div>
+</div></header>
+<main id="top">
+<div class="container"><section class="waiting-hero" aria-labelledby="waiting-title">
+<div class="waiting-hero-copy"><div class="waiting-kicker">PERGAMIN KRONIKA / NASTĘPNE OPOWIEŚCI</div><h1 id="waiting-title">Księgi, które <em>czekają na swój czas.</em></h1><p>Audiobooki zapisane na później — podróże jeszcze nierozpoczęte. Przeszukuj zbiór, przeglądaj okładki i wybieraj następne historie.</p><a class="waiting-link" href="#waiting-books">Odkryj oczekujące tytuły ↓</a></div>
+<div class="waiting-medallion" aria-hidden="true"><span>✦</span><strong id="waiting-hero-total">—</strong><small>OCZEKUJĄCYCH KSIĄG</small><span>✦</span></div>
+</section></div>
+
+<section class="container waiting-library" id="waiting-books" aria-labelledby="waiting-library-title">
+<div class="waiting-title-row"><div><p class="waiting-kicker">KSIĘGOZBIÓR OCZEKUJĄCYCH</p><h2 id="waiting-library-title">Biblioteka przyszłych opowieści</h2><p>Twój wykaz z Google Sites. Zakładka wyłącznie do przeglądania.</p></div><span class="waiting-sort-hint" id="waiting-sort-label" aria-live="polite">NAJNOWSZE DODANE</span></div>
+<div class="waiting-filters"><div class="waiting-controls">
+<label><span>WYSZUKAJ TYTUŁ LUB AUTORA</span><input id="waiting-query" type="search" placeholder="Wpisz tytuł lub autora…" autocomplete="off"></label>
+<label><span>RODZAJ</span><select id="waiting-type"><option value="all">Wszystkie</option><option value="własna">Własne</option><option value="darmowa">Darmowe</option></select></label>
+<label><span>SORTOWANIE</span><select id="waiting-sort"><option value="newest">Ostatnio dodane</option><option value="oldest">Najdawniej dodane</option><option value="title">Tytuł A–Z</option><option value="title-desc">Tytuł Z–A</option><option value="author">Autor A–Z</option></select></label>
+</div><div class="waiting-results"><span id="waiting-count" role="status" aria-live="polite">Wczytywanie…</span><button type="button" id="waiting-reset">Wyczyść filtry ↺</button></div></div>
+<div id="waiting-grid" class="waiting-grid" aria-label="Lista audiobooków"></div>
+<p id="waiting-empty" class="waiting-empty" hidden>Nie znaleziono książek spełniających kryteria.</p>
+<div id="waiting-sentinel" aria-hidden="true"></div>
+<p id="waiting-end" class="waiting-end" hidden>To wszystkie książki z tego zestawienia.</p>
+</section>
+</main>
+<footer class="footer"><div class="container footer-inner"><span>© JOOS71 · PERGAMIN KRONIKA</span><span>Księgi oczekujące · Katalog tylko do przeglądania</span></div></footer>
+<button class="to-top" id="waiting-top" aria-label="Wróć na górę" title="Wróć na górę">↑</button>
+</body></html>

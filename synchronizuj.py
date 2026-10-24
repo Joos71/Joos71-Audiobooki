@@ -19,6 +19,7 @@ from datetime import datetime
 from pathlib import Path
 
 from buduj_katalog import checksum, load_books, write_site
+from oczekujace_katalog import checksum_waiting, latest_waiting, write_waiting_site
 
 ROOT = Path(__file__).resolve().parent
 SETTINGS = ROOT / 'ustawienia.json'
@@ -105,47 +106,82 @@ def pending_push() -> bool:
 
 
 def main() -> None:
-    settings = json.loads(SETTINGS.read_text(encoding='utf-8'))
-    folder = Path(settings['folder_pobierania'])
-    expected_repo = str(settings['repozytorium_https'])
-    log('Rozpoczynam JEDNO sprawdzenie po zalogowaniu do Windows.')
-    source, books, mtime_ns = latest_valid_json(folder)
-    now_checksum = checksum(books)
-    old = json.loads(STATE.read_text(encoding='utf-8')) if STATE.exists() else {}
-    log('Najnowszy prawidłowy zapis: ' + source.name + ' (' + str(len(books)) + ' książek).')
-    if old.get('checksum') == now_checksum:
-        log('Zawartość identyczna jak ostatnio — nie trzeba przebudowywać katalogu.')
-        if pending_push():
-            check_repository(expected_repo)
-            git('push', 'origin', 'main')
-            log('Wysłano wcześniej oczekujące zmiany na GitHub.')
-        log('Zakończono sprawdzenie. Program się wyłącza.')
-        return
-    # Nie cofaj przypadkiem katalogu po usunięciu najnowszego pobranego pliku.
-    if old.get('source_mtime_ns') and mtime_ns < int(old['source_mtime_ns']):
-        log('UWAGA: Dostępny JSON jest starszy od ostatnio zsynchronizowanego. Nie cofnięto biblioteki.')
-        log('Zakończono sprawdzenie. Program się wyłącza.')
-        return
-    check_repository(expected_repo)
-    write_site(books, source.name, mtime_ns / 1e9)
-    log('Przebudowano cały katalog: ' + str(len(books)) + ' książek.')
-    git('add', '--all', '--', 'docs')
-    diff = git('diff', '--cached', '--quiet', '--', 'docs', check=False)
-    if diff.returncode == 1:
-        git('commit', '-m', 'Aktualizacja katalogu przesłuchanych książek')
-        log('Zapisano nowe zmiany w Git.')
-    elif diff.returncode != 0:
-        raise RuntimeError('Nie udało się sprawdzić zmian w Git.')
-    if pending_push():
-        git('push', 'origin', 'main')
-        log('Wysłano aktualizację do GitHub — GitHub Pages opublikuje ją osobno.')
+    """Jedno sprawdzenie obu niezależnych źródeł podczas istniejącego zadania logowania."""
+    settings=json.loads(SETTINGS.read_text(encoding='utf-8'))
+    folder=Path(settings['folder_pobierania'])
+    expected_repo=str(settings['repozytorium_https'])
+    log('Rozpoczynam JEDNO sprawdzenie dwóch kolekcji po zalogowaniu do Windows.')
+    old=json.loads(STATE.read_text(encoding='utf-8')) if STATE.exists() else {}
+    try:
+        source,books,mtime_ns=latest_valid_json(folder)
+    except RuntimeError:
+        if not old.get('checksum'):
+            raise  # Pierwsze uruchomienie musi mieć przynajmniej jeden zapis przesłuchanych.
+        source,books,mtime_ns=None,[],None
+        current_hash=old['checksum']
+        listened_changed=False
+        log('Przesłuchane: brak nowego zapisu, zachowuję opublikowaną kolekcję.')
     else:
-        log('Repozytorium bez zmian do wysłania.')
-    # Stan zapisz TYLKO po sukcesie: po błędzie Git następny rozruch ponowi wysyłanie.
-    STATE.write_text(json.dumps({'checksum':now_checksum, 'source_name':source.name,
-                                 'source_mtime_ns':mtime_ns,
-                                 'synced_at':datetime.now().isoformat(timespec='seconds')},
-                                 ensure_ascii=False, indent=2), encoding='utf-8')
+        current_hash=checksum(books)
+        listened_changed=old.get('checksum')!=current_hash
+        # Nie cofamy danych przesłuchanych przy pozostawieniu starego eksportu.
+        if listened_changed and old.get('source_mtime_ns') and mtime_ns<int(old['source_mtime_ns']):
+            log('Przesłuchane: dostępny zapis starszy od ostatnio wysłanego; pozostawiam publikację.')
+            listened_changed=False
+        log('Przesłuchane: '+source.name+' ('+str(len(books))+' książek).')
+
+    waiting=latest_waiting(folder,log)
+    waiting_changed=False
+    waiting_hash=old.get('waiting_checksum')
+    waiting_source=None
+    waiting_books=[]
+    waiting_mtime=None
+    if waiting is None:
+        log('Oczekujące: nie znaleziono poprawnego pliku "wszystkie książki(.N).json". Zachowuję poprzedni zbiór.')
+    else:
+        waiting_source,waiting_books,waiting_mtime=waiting
+        new_waiting_hash=checksum_waiting(waiting_books)
+        waiting_changed=new_waiting_hash!=old.get('waiting_checksum')
+        if waiting_changed and old.get('waiting_source_mtime_ns') and waiting_mtime<int(old['waiting_source_mtime_ns']):
+            log('Oczekujące: znaleziony zapis jest starszy od poprzednio wysłanego. Nie cofnięto danych.')
+            waiting_changed=False
+        else:
+            waiting_hash=new_waiting_hash
+        log('Oczekujące: '+waiting_source.name+' ('+str(len(waiting_books))+' książek).')
+
+    check_repository(expected_repo)
+    if listened_changed:
+        write_site(books,source.name,mtime_ns/1e9)
+        log('Przebudowano katalog przesłuchanych.')
+    if waiting_changed:
+        write_waiting_site(waiting_books,waiting_source.name,waiting_mtime/1e9)
+        log('Przebudowano katalog oczekujących.')
+
+    # Dla bezpieczeństwa zapisujemy wyłącznie publiczne elementy strony i dwa skrypty.
+    git('add','--all','--','docs','synchronizuj.py','oczekujace_katalog.py')
+    diff=git('diff','--cached','--quiet','--','docs','synchronizuj.py','oczekujace_katalog.py',check=False)
+    if diff.returncode==1:
+        git('commit','-m','Pergamin Kronika - aktualizacja katalogow audiobookow')
+        log('Zapisano zmiany w Git.')
+    elif diff.returncode!=0:
+        raise RuntimeError('Nie udało się sprawdzić zmian w Git.')
+    else:
+        log('Brak zmian do zapisania.')
+    if pending_push():
+        git('push','origin','main')
+        log('Wysłano nowe dane do GitHub Pages.')
+    else:
+        log('Nic nowego do wysłania.')
+
+    # Aktualizujemy stan dopiero po zakończonym powodzeniem Git push.
+    state=dict(old)
+    if listened_changed or not old.get('checksum'):
+        state.update({'checksum':current_hash,'source_name':source.name,'source_mtime_ns':mtime_ns})
+    if waiting_changed:
+        state.update({'waiting_checksum':waiting_hash,'waiting_source_name':waiting_source.name,
+                      'waiting_source_mtime_ns':waiting_mtime})
+    state['synced_at']=datetime.now().isoformat(timespec='seconds')
+    STATE.write_text(json.dumps(state,ensure_ascii=False,indent=2),encoding='utf-8')
     log('Zakończono sprawdzenie. Program się wyłącza.')
 
 
