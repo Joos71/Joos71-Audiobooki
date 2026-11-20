@@ -18,6 +18,8 @@ import traceback
 from datetime import datetime
 from pathlib import Path
 
+# PERGAMIN_PAGES_CONTROL_V3
+import kontrola_publikacji as pages
 from buduj_katalog import checksum, load_books, write_site
 from oczekujace_katalog import checksum_waiting, latest_waiting, write_waiting_site
 
@@ -111,6 +113,8 @@ def main() -> None:
     folder=Path(settings['folder_pobierania'])
     expected_repo=str(settings['repozytorium_https'])
     log('Rozpoczynam JEDNO sprawdzenie dwóch kolekcji po zalogowaniu do Windows.')
+    check_repository(expected_repo)
+    pages.prepare(git,log)
     old=json.loads(STATE.read_text(encoding='utf-8')) if STATE.exists() else {}
     try:
         source,books,mtime_ns=latest_valid_json(folder)
@@ -149,7 +153,6 @@ def main() -> None:
             waiting_hash=new_waiting_hash
         log('Oczekujące: '+waiting_source.name+' ('+str(len(waiting_books))+' książek).')
 
-    check_repository(expected_repo)
     if listened_changed:
         write_site(books,source.name,mtime_ns/1e9)
         log('Przebudowano katalog przesłuchanych.')
@@ -157,9 +160,12 @@ def main() -> None:
         write_waiting_site(waiting_books,waiting_source.name,waiting_mtime/1e9)
         log('Przebudowano katalog oczekujących.')
 
-    # Dla bezpieczeństwa zapisujemy wyłącznie publiczne elementy strony i dwa skrypty.
-    git('add','--all','--','docs','synchronizuj.py','oczekujace_katalog.py')
-    diff=git('diff','--cached','--quiet','--','docs','synchronizuj.py','oczekujace_katalog.py',check=False)
+    if listened_changed or waiting_changed or not (ROOT/pages.MARKER).exists():
+        pages.new_marker(pages.sha(git,'HEAD'))
+
+    # Zatwierdzamy wyłącznie publiczne elementy strony i skrypty automatu.
+    git('add','--all','--','docs','synchronizuj.py','oczekujace_katalog.py','kontrola_publikacji.py')
+    diff=git('diff','--cached','--quiet','--','docs','synchronizuj.py','oczekujace_katalog.py','kontrola_publikacji.py',check=False)
     if diff.returncode==1:
         git('commit','-m','Pergamin Kronika - aktualizacja katalogow audiobookow')
         log('Zapisano zmiany w Git.')
@@ -167,9 +173,10 @@ def main() -> None:
         raise RuntimeError('Nie udało się sprawdzić zmian w Git.')
     else:
         log('Brak zmian do zapisania.')
-    if pending_push():
+    pushed = pending_push()
+    if pushed:
         git('push','origin','main')
-        log('Wysłano nowe dane do GitHub Pages.')
+        log('Git push zakończony; faktyczne wdrożenie zostanie zweryfikowane.')
     else:
         log('Nic nowego do wysłania.')
 
@@ -182,12 +189,23 @@ def main() -> None:
                       'waiting_source_mtime_ns':waiting_mtime})
     state['synced_at']=datetime.now().isoformat(timespec='seconds')
     STATE.write_text(json.dumps(state,ensure_ascii=False,indent=2),encoding='utf-8')
+    pages.monitor(git,log,pushed=pushed)
     log('Zakończono sprawdzenie. Program się wyłącza.')
 
 
 if __name__ == '__main__':
     try:
-        main()
+        with pages.exclusive() as acquired:
+            if not acquired:
+                log('Inna synchronizacja/kontrola już działa; pomijam to uruchomienie.')
+            elif sys.argv[1:] == ['--kontrola-publikacji']:
+                settings=json.loads(SETTINGS.read_text(encoding='utf-8'))
+                check_repository(str(settings['repozytorium_https']))
+                pages.monitor(git,log)
+            elif not sys.argv[1:]:
+                main()
+            else:
+                raise RuntimeError('Nieznany parametr uruchomienia.')
     except Exception as e:
         try:
             log('BŁĄD: ' + str(e))
